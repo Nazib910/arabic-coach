@@ -86,4 +86,9 @@ button,textarea,input{font:inherit}button,a{color:inherit}button{border:0;cursor
 .passageQuestions li{font-size:14px;color:var(--ink)}
 .passageQuestions li span{font-family:var(--font-arabic);font-size:17px;display:block}
 .passageQuestions li small{display:block;font-size:11.5px;color:var(--muted)}
-@media(max-width:640px){.phaseTracker{grid-template-columns:repeat(2,1fr)}.passageLine p{font-size:17px}}
+.briefCard{background:linear-gradient(135deg,#f3f8f4,#eef4ee);border-color:#cfe0d3}
+.briefCard .briefBlock{margin-top:12px}
+.briefCard .briefBlock:first-of-type{margin-top:4px}
+.briefLabel{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--green);background:#e0ece2;border-radius:20px;padding:3px 10px;margin-bottom:6px}
+.briefBlock p{margin:0;font-size:13.5px;line-height:1.75;color:#38443f}
+@media(max-width:640px){.phaseTracker{grid-template-columns:repeat(2,1fr)}.passageLine p{font-size:17px}.briefBlock p{font-size:13px}}

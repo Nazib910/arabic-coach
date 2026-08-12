@@ -1,5 +1,6 @@
 import type { Lesson, Skill } from "@/types";
 import { getLessonTranslation } from "@/data/lessonTranslations";
+import { getLessonBrief } from "@/data/lessonBriefs";
 import { handcraftedRaw } from "@/data/handcraftedLessons";
 import { phaseContent } from "@/data/phaseContent";
 import {
@@ -12,22 +13,29 @@ import {
 } from "@/data/phases";
 
 // -------- Phase 1 (Days 1–30): hand-tuned lessons preserved verbatim --------
-const handcrafted: Lesson[] = handcraftedRaw.map((item, index) => ({
-  day: index + 1,
-  title: item[0],
-  arabicTitle: item[1],
-  phase: item[2],
-  duration: "45–60 min",
-  focus: item[3],
-  vocabulary: item[4].split("،").map((word) => word.trim()),
-  models: item[5].split("|"),
-  grammar: item[3],
-  goals: [item[6], "Use today’s vocabulary in original Arabic.", "Log errors and confidence before finishing."],
-  exercises: item[7].split("|"),
-  skill: item[8],
-  checkpoint: item[9],
-  ...getLessonTranslation(index, item[2]),
-}));
+const handcrafted: Lesson[] = handcraftedRaw.map((item, index) => {
+  const translation = getLessonTranslation(index, item[2]);
+  const base = {
+    day: index + 1,
+    title: item[0],
+    arabicTitle: item[1],
+    phase: item[2],
+    duration: "45–60 min",
+    focus: item[3],
+    vocabulary: item[4].split("،").map((word) => word.trim()),
+    models: item[5].split("|"),
+    grammar: item[3],
+    goals: [item[6], "Use today’s vocabulary in original Arabic.", "Log errors and confidence before finishing."],
+    exercises: item[7].split("|"),
+    skill: item[8],
+    checkpoint: item[9],
+    ...translation,
+  };
+  return {
+    ...base,
+    brief: getLessonBrief(index + 1, { title: base.title, titleBn: base.titleBn, focus: base.focus, focusBn: base.focusBn, grammar: base.grammar, grammarBn: base.grammarBn, skill: base.skill, checkpoint: base.checkpoint }),
+  };
+});
 
 // -------- Days 31–400: generated from the 20-phase roadmap spec --------
 function rotate<T>(list: T[], offset: number, count: number): T[] {
@@ -110,6 +118,12 @@ function generatedLesson(day: number): Lesson {
     exercisesBn,
     skill,
     checkpoint: checkpoint || undefined,
+    brief: getLessonBrief(day, {
+      title, titleBn,
+      focus, focusBn,
+      grammar: grammarPoint.en, grammarBn: grammarPoint.bn,
+      skill, checkpoint,
+    }),
   };
 }
 

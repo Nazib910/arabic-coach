@@ -20,6 +20,17 @@ export type Lesson = {
   exercisesBn: string[];
   skill: Skill;
   checkpoint?: boolean;
+  // "What you're learning & why" — a detailed, multi-sentence briefing.
+  brief: LessonBrief;
+};
+
+export type LessonBrief = {
+  what: string;      // what you are learning today (a few sentences)
+  whatBn: string;
+  why: string;       // why it matters / how it connects / what you'll be able to do
+  whyBn: string;
+  buildsOn: string;  // link to prior learning + where it leads
+  buildsOnBn: string;
 };
 
 export type DayProgress = {
