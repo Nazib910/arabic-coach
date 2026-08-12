@@ -44,10 +44,17 @@ const RequestSchema = z.object({
   confidence: z.coerce.number().min(1).max(5).optional(),
   previousFeedback: z.unknown().optional(),
   images: z.array(SubmissionImageSchema).max(3).default([]),
+  passage: z.object({
+    kind: z.enum(["reading", "listening"]),
+    title: z.string().max(200),
+    text: z.array(z.string().max(600)).max(12),
+    questions: z.array(z.string().max(400)).max(8),
+  }).optional(),
 });
 
 const SYSTEM_PROMPT = `You are Ustadh, a rigorous but encouraging professional teacher of Modern Standard Arabic. Evaluate the submitted work against the lesson and the learner's longitudinal evidence. Prioritize recurring weaknesses without repeating already-mastered explanations. Be linguistically exact, concise, honest, respectful, and warm. Preserve intended meaning when correcting Arabic. Repair codes: P pronunciation, S script/spelling, M morphology, G grammar, V vocabulary, C comprehension, F fluency.
 When images are attached, carefully inspect all visible handwritten or printed Arabic. Treat the images as learner evidence alongside typed answers. Mention useful visual evidence, spelling, connected letter forms, diacritics, and legibility where relevant. Never claim to see text that is unclear or outside the image.
+When a comprehensionPassage is present, this is a reading or listening day: judge the learner's answers as comprehension of THAT passage. Check whether the answers correctly capture the main idea and the specific details/questions in the passage, and whether they are expressed in acceptable Arabic. Reward correct understanding even with minor language slips; use the C (comprehension) repair code for misunderstanding, missed details, or answers unsupported by the passage. Do not penalise information that is genuinely in the passage.
 Reply ONLY as JSON matching:
 {"score":0,"headline":"English string","strengths":["English string"],"corrections":[{"original":"string","corrected":"string","explanation":"English string"}],"repairCodes":["G"],"nextSteps":["English string","English string","English string"],"teacherNote":"English string","localized":{"bn":{"headline":"বাংলা","strengths":["বাংলা"],"correctionExplanations":["বাংলা"],"nextSteps":["বাংলা","বাংলা","বাংলা"],"teacherNote":"বাংলা"},"en":{"headline":"English","strengths":["English"],"correctionExplanations":["English"],"nextSteps":["English","English","English"],"teacherNote":"English"}}}
 Score 0–100. Give 2–4 evidence-based strengths, at most 6 high-value corrections, 1–4 repair codes, and exactly 3 actionable next steps. Corrected Arabic must use Arabic script. The bn copy must sound like a kind Bangladeshi teacher speaking naturally to one learner. Use short sentences, familiar everyday Bangla, and address the learner as “আপনি”. Keep necessary Arabic grammar terms, but explain them simply. Avoid bureaucratic or literary words when an easier phrase works. Be friendly and encouraging without hiding mistakes. The en copy must be equally warm and clear. correctionExplanations must align by index with corrections. Keep the legacy top-level English fields identical in meaning to localized.en. Penalize incomplete work appropriately.`;
@@ -143,7 +150,7 @@ export async function POST(request: Request) {
 
     const parsed = RequestSchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Invalid lesson submission.", details: parsed.error.flatten() }, { status: 400 });
-    const { lesson, answers, confidence, previousFeedback, images } = parsed.data;
+    const { lesson, answers, confidence, previousFeedback, images, passage } = parsed.data;
     validateImages(images);
     const normalized = answers.map((answer) => String(answer ?? "").slice(0, 6000));
     if (normalized.every((answer) => !answer.trim()) && images.length === 0) return NextResponse.json({ error: "Write an answer or attach a photo before submitting." }, { status: 400 });
@@ -158,6 +165,7 @@ export async function POST(request: Request) {
     const submission = {
       learnerProfile: { email: authData.user.email, recentAttempts: attemptsResult.data ?? [], skillMastery: skillsResult.data ?? [], activeErrors: errorsResult.data ?? [], latestMemory: memoryResult.data ?? null },
       lesson: { day: lesson.day, title: lesson.title, skill: lesson.skill, focus: lesson.focus, grammar: lesson.grammar, vocabulary: lesson.vocabulary, models: lesson.models, exercises: lesson.exercises, checkpoint: Boolean(lesson.checkpoint) },
+      comprehensionPassage: passage ? { kind: passage.kind, title: passage.title, text: passage.text, questions: passage.questions } : null,
       learnerAnswers: normalized,
       visualEvidence: images.map(({ name, mimeType, byteSize }, index) => ({ image: index + 1, name, mimeType, byteSize })),
       selfRatedConfidence: Number(confidence) || 3,

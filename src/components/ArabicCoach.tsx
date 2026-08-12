@@ -237,7 +237,7 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
       const response = await fetch("/api/tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lesson, answers, images, confidence, locale, previousFeedback: progress[lesson.day]?.feedback }),
+        body: JSON.stringify({ lesson, answers, images, confidence, locale, previousFeedback: progress[lesson.day]?.feedback, passage: (() => { const p = getPassage(lesson.day); return p ? { kind: p.kind, title: p.title, text: p.lines.map((line) => line.ar), questions: p.questions.map((q) => q.ar) } : undefined; })() }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Tutor request failed");

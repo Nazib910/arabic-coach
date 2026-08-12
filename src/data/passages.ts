@@ -110,6 +110,65 @@ const handwritten: Record<number, Passage> = {
       { ar: "كيفَ كانوا في نهايةِ الرحلةِ؟", en: "How did they feel at the end of the trip?", bn: "ভ্রমণের শেষে তাদের অবস্থা কেমন ছিল?" },
     ],
   },
+  // Day 65 — Interaction: reading a schedule
+  65: {
+    kind: "reading",
+    title: "The city library — opening hours",
+    titleBn: "শহরের গ্রন্থাগার — খোলার সময়",
+    intro: "Scan for times and days; you don’t need every word.",
+    introBn: "সময় ও দিন খুঁজুন; প্রতিটি শব্দ লাগবে না।",
+    lines: [
+      { ar: "مَكْتَبةُ المدينةِ مَفْتوحةٌ مِنَ السّبتِ إلى الخميسِ.", en: "The city library is open from Saturday to Thursday.", bn: "শহরের গ্রন্থাগার শনিবার থেকে বৃহস্পতিবার খোলা।" },
+      { ar: "تَبْدَأُ المواعيدُ في السّاعةِ التّاسعةِ صباحاً.", en: "Hours start at nine o’clock in the morning.", bn: "সময় শুরু হয় সকাল নয়টায়।" },
+      { ar: "وتَنْتَهي في السّاعةِ الثّامنةِ مساءً.", en: "And end at eight o’clock in the evening.", bn: "আর শেষ হয় রাত আটটায়।" },
+      { ar: "المكتبةُ مُغْلَقةٌ يَوْمَ الجُمُعةِ.", en: "The library is closed on Friday.", bn: "শুক্রবার গ্রন্থাগার বন্ধ।" },
+      { ar: "قِسْمُ الأطفالِ في الطّابقِ الأوّلِ.", en: "The children’s section is on the first floor.", bn: "শিশু-বিভাগ প্রথম তলায়।" },
+    ],
+    questions: [
+      { ar: "متى تُغْلَقُ المكتبةُ في الأسبوعِ؟", en: "Which day is the library closed?", bn: "সপ্তাহে কোন দিন গ্রন্থাগার বন্ধ থাকে?" },
+      { ar: "في أيِّ ساعةٍ تبدأُ المواعيدُ؟", en: "What time do hours start?", bn: "কয়টায় সময় শুরু হয়?" },
+      { ar: "أين قسمُ الأطفالِ؟", en: "Where is the children’s section?", bn: "শিশু-বিভাগ কোথায়?" },
+    ],
+  },
+  // Day 70 — Interaction: multi-step listening
+  70: {
+    kind: "listening",
+    title: "How to register online",
+    titleBn: "অনলাইনে নিবন্ধন কীভাবে করবেন",
+    intro: "Listen for the ordered steps: first, then, after that, finally.",
+    introBn: "ক্রম শুনুন: প্রথমে, তারপর, এরপর, অবশেষে।",
+    lines: [
+      { ar: "أوّلاً، اِفْتَحِ الموقعَ واضْغَطْ على «تسجيل».", en: "First, open the website and click ‘Register’.", bn: "প্রথমে ওয়েবসাইট খুলে ‘নিবন্ধন’-এ ক্লিক করুন।" },
+      { ar: "بعدَها، اُكْتُبِ اسمَك وبريدَك الإلكترونيَّ.", en: "After that, type your name and your email.", bn: "এরপর নাম ও ইমেইল লিখুন।" },
+      { ar: "ثُمَّ اخْتَرْ كلمةَ مرورٍ قويّةً.", en: "Then choose a strong password.", bn: "তারপর একটি শক্ত পাসওয়ার্ড বাছুন।" },
+      { ar: "تَأكَّدْ مِنَ البياناتِ قبلَ الحفظِ.", en: "Make sure of the details before saving.", bn: "সংরক্ষণের আগে তথ্য নিশ্চিত করুন।" },
+      { ar: "أخيراً، اضْغَطْ «حفظ» وسَتَصِلُك رسالةُ تأكيدٍ.", en: "Finally, press ‘Save’ and a confirmation message will reach you.", bn: "অবশেষে ‘সংরক্ষণ’ চাপুন, একটি নিশ্চিতকরণ বার্তা আসবে।" },
+    ],
+    questions: [
+      { ar: "ما أوّلُ خطوةٍ؟", en: "What is the first step?", bn: "প্রথম ধাপ কী?" },
+      { ar: "ماذا تفعلُ قبلَ الحفظِ؟", en: "What do you do before saving?", bn: "সংরক্ষণের আগে কী করবেন?" },
+      { ar: "ماذا يحدثُ بعدَ الضغطِ على «حفظ»؟", en: "What happens after pressing ‘Save’?", bn: "‘সংরক্ষণ’ চাপার পর কী হয়?" },
+    ],
+  },
+  // Day 75 — Interaction: reading notices & ads
+  75: {
+    kind: "reading",
+    title: "Two short advertisements",
+    titleBn: "দুটি ছোট বিজ্ঞাপন",
+    intro: "Compare the two ads. Infer the meaning of new words from context.",
+    introBn: "দুটি বিজ্ঞাপন তুলনা করুন; অচেনা শব্দ প্রসঙ্গ থেকে বুঝুন।",
+    lines: [
+      { ar: "للبَيْعِ: دَرّاجةٌ بحالةٍ ممتازةٍ، السّعرُ مئتا ريالٍ.", en: "For sale: a bicycle in excellent condition, price two hundred riyals.", bn: "বিক্রয়: চমৎকার অবস্থার একটি সাইকেল, দাম দুইশ রিয়াল।" },
+      { ar: "للتّواصُلِ: اتّصلْ بعدَ السّاعةِ الخامسةِ مساءً.", en: "To get in touch: call after five in the evening.", bn: "যোগাযোগ: বিকেল পাঁচটার পর ফোন করুন।" },
+      { ar: "مَطْلوبٌ: مُعَلِّمٌ للّغةِ العربيةِ بدوامٍ جزئيٍّ.", en: "Wanted: an Arabic teacher, part-time.", bn: "আবশ্যক: খণ্ডকালীন একজন আরবি শিক্ষক।" },
+      { ar: "تُرْسَلُ السّيرةُ الذّاتيةُ إلى البريدِ الإلكترونيِّ.", en: "Send your CV to the email address.", bn: "জীবনবৃত্তান্ত ইমেইলে পাঠান।" },
+    ],
+    questions: [
+      { ar: "كم سعرُ الدرّاجةِ؟", en: "What is the price of the bicycle?", bn: "সাইকেলটির দাম কত?" },
+      { ar: "متى يمكنُ الاتّصالُ؟", en: "When can you call?", bn: "কখন ফোন করা যাবে?" },
+      { ar: "ماذا يُطْلَبُ في الإعلانِ الثّاني؟", en: "What is required in the second ad?", bn: "দ্বিতীয় বিজ্ঞাপনে কী চাওয়া হয়েছে?" },
+    ],
+  },
 };
 
 // Fallback generator: build a light graded passage for any reading/listening
@@ -150,7 +209,10 @@ export function getPassage(day: number): Passage | null {
   if (handwritten[day]) return handwritten[day];
   const lesson = lessons[day - 1];
   if (!lesson) return null;
-  // Only attach a generated passage to reading/listening skill days.
+  // Foundation-phase "reading" days (Days 1–20) are script/decoding drills,
+  // not passage days — don't attach a generic text there.
+  if (day <= 20) return null;
+  // Otherwise attach a level-matched generated passage to reading/listening days.
   if (lesson.skill === "reading" || lesson.skill === "listening") {
     return generatedPassage(day);
   }
