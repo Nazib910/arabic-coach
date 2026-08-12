@@ -10,6 +10,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { lessons } from "@/data/lessons";
 import { phaseSpecs, phaseForDay, COURSE_LENGTH } from "@/data/phases";
+import { getPassage } from "@/data/passages";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import GuidedTour from "@/components/GuidedTour";
 import ArabicInputAssistant from "@/components/ArabicInputAssistant";
@@ -48,6 +49,7 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
   const [tourOpen, setTourOpen] = useState(false);
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
   const [dueWords, setDueWords] = useState<Array<{ word: string; status: string }>>([]);
+  const [showPassageTranslation, setShowPassageTranslation] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -406,6 +408,7 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
     const feedback = progress[lesson.day]?.feedback;
     const goals = locale === "bn" ? lesson.goalsBn : lesson.goals;
     const exercises = locale === "bn" ? lesson.exercisesBn : lesson.exercises;
+    const passage = getPassage(lesson.day);
     const skillLabels = { reading:{bn:"পাঠ",en:"reading"}, writing:{bn:"লেখা",en:"writing"}, listening:{bn:"শ্রবণ",en:"listening"}, speaking:{bn:"কথন",en:"speaking"}, grammar:{bn:"ব্যাকরণ",en:"grammar"}, vocabulary:{bn:"শব্দভান্ডার",en:"vocabulary"} } as const;
     const dailyMethod = locale === "bn" ? [["৫–৮ মিনিট","না দেখে মনে করুন"],["১০–১২ মিনিট","শুনুন ও লক্ষ্য করুন"],["১২–১৫ মিনিট","ধাপে ধাপে অনুশীলন"],["১০–১৫ মিনিট","নিজে ব্যবহার করুন"],["৩–৫ মিনিট","শেষে একটু ভাবুন"]] : [["5–8 min","Retrieve"],["10–12 min","Input & sound"],["12–15 min","Guided practice"],["10–15 min","Production"],["3–5 min","Reflect"]];
     return (
@@ -419,8 +422,25 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
         <div className="lessonColumns"><div className="lessonContent">
           <section className="contentCard"><CardTitle number={bengaliNumber("01",locale)} title={pick(locale,{bn:"আজকের শেখার লক্ষ্য",en:"Today’s outcomes"})} icon={<Target/>}/><ul className="goalList">{goals.map((goal)=><li key={goal}><Check size={14}/>{goal}</li>)}</ul></section>
           <section className="contentCard"><CardTitle number={bengaliNumber("02",locale)} title={pick(locale,{bn:"মূল শব্দভান্ডার",en:"Core vocabulary"})} icon={<Languages/>}/><div className="vocabGrid">{lesson.vocabulary.map((word,index)=><div className="vocabChip" key={`${word}-${index}`}><button title={pick(locale,{bn:"উচ্চস্বরে শুনুন",en:"Read aloud"})} onClick={()=>speak(word)}><Volume2 size={14}/></button><b dir="rtl">{word}</b></div>)}</div></section>
-          <section className="contentCard"><CardTitle number={bengaliNumber("03",locale)} title={pick(locale,{bn:"বাক্যের ধরন লক্ষ্য করুন",en:"Notice the pattern"})} icon={<BookOpen/>}/><p className="grammarNote">{locale === "bn" ? lesson.grammarBn : lesson.grammar}</p><div className="modelStack">{lesson.models.map((model,index)=><div key={model}><span>{bengaliNumber(index+1,locale)}</span><p dir="rtl">{model}</p><button onClick={()=>speak(model)} aria-label={pick(locale,{bn:"নমুনাটি শুনুন",en:"Read model aloud"})}><Volume2 size={16}/></button></div>)}</div><p className="practiceHint"><CircleHelp size={15}/> {pick(locale,{bn:"প্রতিটি নমুনা ধীরে ও স্বাভাবিকভাবে পড়ুন, তারপর স্মৃতি থেকে একবার বলুন।",en:"Read each model slowly, naturally, then once from memory."})}</p></section>
-          <section className="contentCard exerciseCard"><CardTitle number={bengaliNumber("04",locale)} title={pick(locale,{bn:"এবার নিজে চেষ্টা করুন",en:"Practice & produce"})} icon={<PenLine/>}/>{exercises.map((exercise,index)=><div className="exercise" key={exercise}><label><span>{bengaliNumber(index+1,locale)}</span>{exercise}</label><ArabicInputAssistant value={answers[index] || ""} onChange={(value)=>updateAnswer(index,value)} placeholder={index===2 ? pick(locale,{bn:"এখানে আপনার আরবি উত্তর লিখুন বা তৈরি করুন…",en:"Write or build your Arabic response here…"}) : "اكتب إجابتك هنا…"} rows={index===2?6:4} vocabulary={lesson.vocabulary} locale={locale}/></div>)}</section>
+          <section className="contentCard"><CardTitle number={bengaliNumber("03",locale)} title={pick(locale,{bn:"বাক্যের ধরন লক্ষ্য করুন",en:"Notice the pattern"})} icon={<BookOpen/>}/><p className="grammarNote">{locale === "bn" ? lesson.grammarBn : lesson.grammar}</p><div className="modelStack">{lesson.models.map((model,index)=><div key={model}><span>{bengaliNumber(index+1,locale)}</span><p dir="rtl">{model}</p><button onClick={()=>speak(model)} aria-label={pick(locale,{bn:"নমুনাটি শুনুন",en:"Read model aloud"})}><Volume2 size={16}/></button></div>)}</div><p className="practiceHint"><CircleHelp size={15}/> {pick(locale,{bn:"প্রতিটি নমুনা ধীরে ও স্বাভাবিকভাবে পড়ুন, তারপর স্মৃতি থেকে একবার বলুন।",en:"Read each model slowly, naturally, then once from memory."})}</p></section>
+          {passage && <section className="contentCard passageCard">
+            <CardTitle number={bengaliNumber("04",locale)} title={passage.kind === "listening" ? pick(locale,{bn:"শুনে বোঝার লেখা",en:"Listening text"}) : pick(locale,{bn:"পড়ার লেখা",en:"Reading text"})} icon={passage.kind === "listening" ? <Headphones/> : <BookOpen/>}/>
+            <div className="passageHead">
+              <div><b>{locale==="bn"?passage.titleBn:passage.title}</b><span>{pick(locale,{bn:passage.introBn,en:passage.intro})}</span></div>
+              <div className="passageActions">
+                <button onClick={()=>speak(passage.lines.map((line)=>line.ar).join(" "))} title={pick(locale,{bn:"পুরোটা শুনুন",en:"Play all"})}><Volume2 size={15}/>{pick(locale,{bn:"পুরোটা শুনুন",en:"Play all"})}</button>
+                <button className={showPassageTranslation?"active":""} onClick={()=>setShowPassageTranslation((value)=>!value)} title={pick(locale,{bn:"অনুবাদ",en:"Translation"})}><Languages size={15}/>{showPassageTranslation?pick(locale,{bn:"অনুবাদ লুকান",en:"Hide translation"}):pick(locale,{bn:"অনুবাদ দেখান",en:"Show translation"})}</button>
+              </div>
+            </div>
+            <div className="passageLines">{passage.lines.map((line,index)=>(
+              <div className="passageLine" key={index}>
+                <button onClick={()=>speak(line.ar)} aria-label={pick(locale,{bn:"এই লাইনটি শুনুন",en:"Read this line"})}><Volume2 size={15}/></button>
+                <div><p dir="rtl">{line.ar}</p>{showPassageTranslation && <small>{locale==="bn"?line.bn:line.en}</small>}</div>
+              </div>
+            ))}</div>
+            <div className="passageQuestions"><h4>{pick(locale,{bn:"বোঝার প্রশ্ন",en:"Comprehension"})}</h4><ol>{passage.questions.map((q,index)=><li key={index}><span dir="rtl">{q.ar}</span><small>{locale==="bn"?q.bn:q.en}</small></li>)}</ol><p className="practiceHint"><CircleHelp size={15}/> {pick(locale,{bn:"উত্তরগুলো নিচের অনুশীলনে আরবিতে লিখুন।",en:"Answer these in Arabic in the practice below."})}</p></div>
+          </section>}
+          <section className="contentCard exerciseCard"><CardTitle number={bengaliNumber("05",locale)} title={pick(locale,{bn:"এবার নিজে চেষ্টা করুন",en:"Practice & produce"})} icon={<PenLine/>}/>{exercises.map((exercise,index)=><div className="exercise" key={exercise}><label><span>{bengaliNumber(index+1,locale)}</span>{exercise}</label><ArabicInputAssistant value={answers[index] || ""} onChange={(value)=>updateAnswer(index,value)} placeholder={index===2 ? pick(locale,{bn:"এখানে আপনার আরবি উত্তর লিখুন বা তৈরি করুন…",en:"Write or build your Arabic response here…"}) : "اكتب إجابتك هنا…"} rows={index===2?6:4} vocabulary={lesson.vocabulary} locale={locale}/></div>)}</section>
           <section className="contentCard imageEvidenceCard"><ImageEvidenceUploader images={images} onChange={setImages} locale={locale} onError={(description)=>toast({ variant:"error", title:pick(locale,{bn:"ছবি যোগ করা যায়নি",en:"Could not add image"}), description })}/></section>
           <section className="contentCard submitCard"><div><span className="eyebrow"><Sparkles size={14}/> {pick(locale,{bn:"AI শিক্ষকের মতামত",en:"AI teacher review"})}</span><h2>{pick(locale,{bn:"উত্তরগুলো দেখে নেব?",en:"Ready for precise feedback?"})}</h2><p>{pick(locale,{bn:"AI শিক্ষক দেখবেন কোথায় ভালো করেছেন, কোথায় একটু ঠিক করা দরকার এবং এরপর কী অনুশীলন করবেন।",en:"Your work is evaluated for accuracy, vocabulary, grammar, and communication—not just marked right or wrong."})}</p></div><div className="confidence"><label>{pick(locale,{bn:"উত্তর নিয়ে কতটা নিশ্চিত?",en:"Confidence"})} <b>{bengaliNumber(confidence,locale)}/৫</b></label><input type="range" min="1" max="5" value={confidence} onChange={(event)=>updateConfidence(Number(event.target.value))}/></div><button className="primaryButton" onClick={requestFeedback} disabled={loading || (answers.every((answer)=>!answer.trim()) && images.length===0)}>{loading ? <><span className="spinner"/>{pick(locale,{bn:"শিক্ষক উত্তরগুলো দেখছেন…",en:"Teacher is reviewing…"})}</> : <><Send size={16}/>{feedback ? pick(locale,{bn:"আবার দেখে দিন",en:"Review again"}) : pick(locale,{bn:"শিক্ষককে দেখান",en:"Submit to my teacher"})}</>}</button></section>
           {feedback && <FeedbackPanel feedback={feedback} locale={locale}/>} 
