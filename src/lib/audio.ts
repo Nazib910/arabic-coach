@@ -15,11 +15,28 @@ const assetCache = new Map<string, HTMLAudioElement>();
 let currentAudio: HTMLAudioElement | null = null;
 const ttsFailed = { value: false }; // once the server route 404/errors, stop hammering it
 
+// Pick the best-quality Arabic voice available, not just the first one.
+// Prefer known natural/enhanced voices and "local" (on-device, higher quality)
+// over network/robotic ones.
+function pickBestArabicVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const arabic = voices.filter((v) => v.lang?.toLowerCase().startsWith("ar"));
+  if (!arabic.length) return null;
+  const preferredNames = ["majed", "tarik", "maged", "laila", "hala", "google", "microsoft", "enhanced", "premium", "natural"];
+  const score = (v: SpeechSynthesisVoice) => {
+    const name = v.name.toLowerCase();
+    let s = 0;
+    if (v.localService) s += 3;                       // on-device voices sound better
+    if (preferredNames.some((p) => name.includes(p))) s += 4;
+    if (v.lang.toLowerCase() === "ar-sa") s += 1;     // MSA-leaning
+    return s;
+  };
+  return [...arabic].sort((a, b) => score(b) - score(a))[0] ?? arabic[0];
+}
+
 function hasArabicVoice(): boolean {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
   if (cachedArabicVoice !== undefined) return Boolean(cachedArabicVoice);
-  const voices = window.speechSynthesis.getVoices();
-  cachedArabicVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("ar")) ?? null;
+  cachedArabicVoice = pickBestArabicVoice(window.speechSynthesis.getVoices());
   return Boolean(cachedArabicVoice);
 }
 
@@ -27,8 +44,7 @@ function hasArabicVoice(): boolean {
 if (typeof window !== "undefined" && "speechSynthesis" in window) {
   try {
     window.speechSynthesis.onvoiceschanged = () => {
-      const voices = window.speechSynthesis.getVoices();
-      cachedArabicVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("ar")) ?? null;
+      cachedArabicVoice = pickBestArabicVoice(window.speechSynthesis.getVoices());
     };
   } catch {
     /* ignore */
@@ -63,10 +79,10 @@ function playAsset(src: string): Promise<boolean> {
   });
 }
 
-async function playTts(text: string): Promise<boolean> {
+async function playTts(text: string, slow: boolean): Promise<boolean> {
   if (ttsFailed.value) return false;
   try {
-    const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}`);
+    const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&slow=${slow ? "1" : "0"}`);
     if (!res.ok) {
       if (res.status === 404 || res.status === 501 || res.status === 502) ttsFailed.value = true;
       return false;
@@ -84,12 +100,14 @@ async function playTts(text: string): Promise<boolean> {
   }
 }
 
-function playBrowser(text: string): boolean {
+function playBrowser(text: string, slow: boolean): boolean {
   if (!hasArabicVoice()) return false;
   try {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ar-SA";
-    utterance.rate = 0.78;
+    utterance.lang = cachedArabicVoice?.lang ?? "ar-SA";
+    // Slower, clearer delivery for beginners; single letters/words even slower.
+    utterance.rate = slow ? 0.55 : 0.7;
+    utterance.pitch = 1;
     if (cachedArabicVoice) utterance.voice = cachedArabicVoice;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
@@ -105,19 +123,28 @@ function playBrowser(text: string): boolean {
  * @param assetSrc optional pre-recorded asset path (from a manifest)
  * @returns which source was used (or "unavailable")
  */
-export async function playArabic(text: string, assetSrc?: string): Promise<AudioResult> {
+export async function playArabic(
+  text: string,
+  assetSrc?: string,
+  opts?: { slow?: boolean },
+): Promise<AudioResult> {
   if (typeof window === "undefined") return "unavailable";
   stopAll();
   const trimmed = text?.trim();
   if (!trimmed) return "unavailable";
 
+  // Single letters and very short items are spoken extra-slowly for clarity,
+  // unless the caller overrides.
+  const isTiny = trimmed.replace(/[\u064B-\u0652\s]/g, "").length <= 3;
+  const slow = opts?.slow ?? isTiny;
+
   if (assetSrc) {
     const ok = await playAsset(assetSrc);
     if (ok) return "asset";
   }
-  const ttsOk = await playTts(trimmed);
+  const ttsOk = await playTts(trimmed, slow);
   if (ttsOk) return "tts";
-  const browserOk = playBrowser(trimmed);
+  const browserOk = playBrowser(trimmed, slow);
   if (browserOk) return "browser";
   return "unavailable";
 }
