@@ -11,6 +11,11 @@ import type { User } from "@supabase/supabase-js";
 import { lessons } from "@/data/lessons";
 import { phaseSpecs, phaseForDay, COURSE_LENGTH } from "@/data/phases";
 import { getPassage } from "@/data/passages";
+import { playArabic } from "@/lib/audio";
+import { getGloss } from "@/data/glossary";
+import { simpleTranslit } from "@/lib/translit";
+import AlphabetTrainer from "@/components/AlphabetTrainer";
+import { letters as allLetters } from "@/data/letters";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import GuidedTour from "@/components/GuidedTour";
 import ArabicInputAssistant from "@/components/ArabicInputAssistant";
@@ -50,6 +55,7 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
   const [dueWords, setDueWords] = useState<Array<{ word: string; status: string }>>([]);
   const [showPassageTranslation, setShowPassageTranslation] = useState(false);
+  const [translitOverride, setTranslitOverride] = useState<boolean | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -409,6 +415,16 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
     const goals = locale === "bn" ? lesson.goalsBn : lesson.goals;
     const exercises = locale === "bn" ? lesson.exercisesBn : lesson.exercises;
     const passage = getPassage(lesson.day);
+    // Transliteration crutch: on by default for the first two weeks, off after,
+    // unless the learner has manually overridden it.
+    const showTranslit = translitOverride ?? (lesson.day <= 14);
+    // Alphabet days (2–4) show the interactive trainer with that day's letters.
+    const alphabetSubset: Record<number, string[]> = {
+      2: ["ا","ب","ت","ث","ج","ح","خ"],
+      3: ["د","ذ","ر","ز","س","ش","ص","ض"],
+      4: ["ط","ظ","ع","غ","ف","ق","ك","ل","م","ن","ه","و","ي"],
+    };
+    const trainerLetters = alphabetSubset[lesson.day] ?? (lesson.arabicTitle?.includes("الحروف") ? allLetters.map((l)=>l.ar) : null);
     const skillLabels = { reading:{bn:"পাঠ",en:"reading"}, writing:{bn:"লেখা",en:"writing"}, listening:{bn:"শ্রবণ",en:"listening"}, speaking:{bn:"কথন",en:"speaking"}, grammar:{bn:"ব্যাকরণ",en:"grammar"}, vocabulary:{bn:"শব্দভান্ডার",en:"vocabulary"} } as const;
     const dailyMethod = locale === "bn" ? [["৫–৮ মিনিট","না দেখে মনে করুন"],["১০–১২ মিনিট","শুনুন ও লক্ষ্য করুন"],["১২–১৫ মিনিট","ধাপে ধাপে অনুশীলন"],["১০–১৫ মিনিট","নিজে ব্যবহার করুন"],["৩–৫ মিনিট","শেষে একটু ভাবুন"]] : [["5–8 min","Retrieve"],["10–12 min","Input & sound"],["12–15 min","Guided practice"],["10–15 min","Production"],["3–5 min","Reflect"]];
     return (
@@ -427,8 +443,9 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
             <div className="briefBlock"><span className="briefLabel">{pick(locale,{bn:"কীসের সঙ্গে যুক্ত",en:"How it connects"})}</span><p>{locale==="bn"?lesson.brief.buildsOnBn:lesson.brief.buildsOn}</p></div>
           </section>
           <section className="contentCard"><CardTitle number={bengaliNumber("01",locale)} title={pick(locale,{bn:"আজকের শেখার লক্ষ্য",en:"Today’s outcomes"})} icon={<Target/>}/><ul className="goalList">{goals.map((goal)=><li key={goal}><Check size={14}/>{goal}</li>)}</ul></section>
-          <section className="contentCard"><CardTitle number={bengaliNumber("02",locale)} title={pick(locale,{bn:"মূল শব্দভান্ডার",en:"Core vocabulary"})} icon={<Languages/>}/><div className="vocabGrid">{lesson.vocabulary.map((word,index)=><div className="vocabChip" key={`${word}-${index}`}><button title={pick(locale,{bn:"উচ্চস্বরে শুনুন",en:"Read aloud"})} onClick={()=>speak(word)}><Volume2 size={14}/></button><b dir="rtl">{word}</b></div>)}</div></section>
-          <section className="contentCard"><CardTitle number={bengaliNumber("03",locale)} title={pick(locale,{bn:"বাক্যের ধরন লক্ষ্য করুন",en:"Notice the pattern"})} icon={<BookOpen/>}/><p className="grammarNote">{locale === "bn" ? lesson.grammarBn : lesson.grammar}</p><div className="modelStack">{lesson.models.map((model,index)=><div key={model}><span>{bengaliNumber(index+1,locale)}</span><p dir="rtl">{model}</p><button onClick={()=>speak(model)} aria-label={pick(locale,{bn:"নমুনাটি শুনুন",en:"Read model aloud"})}><Volume2 size={16}/></button></div>)}</div><p className="practiceHint"><CircleHelp size={15}/> {pick(locale,{bn:"প্রতিটি নমুনা ধীরে ও স্বাভাবিকভাবে পড়ুন, তারপর স্মৃতি থেকে একবার বলুন।",en:"Read each model slowly, naturally, then once from memory."})}</p></section>
+          <section className="contentCard"><div className="cardTitleRow"><CardTitle number={bengaliNumber("02",locale)} title={pick(locale,{bn:"মূল শব্দভান্ডার",en:"Core vocabulary"})} icon={<Languages/>}/><button className={`translitToggle ${showTranslit?"active":""}`} onClick={()=>setTranslitOverride(!showTranslit)} title={pick(locale,{bn:"উচ্চারণ-সহায়িকা",en:"Pronunciation help"})}>{showTranslit?pick(locale,{bn:"উচ্চারণ লুকান",en:"Hide abc"}):pick(locale,{bn:"উচ্চারণ (abc)",en:"Show abc"})}</button></div><div className="vocabGrid">{lesson.vocabulary.map((word,index)=>{const g=getGloss(word);const meaning=locale==="bn"?g.bn:g.en;return <div className="vocabChip" key={`${word}-${index}`}><button title={pick(locale,{bn:"উচ্চস্বরে শুনুন",en:"Read aloud"})} onClick={()=>speak(word)}><Volume2 size={14}/></button><div className="vocabText"><b dir="rtl">{word}</b>{showTranslit && <i className="translit">{g.translit}</i>}{meaning && <small className="gloss">{meaning}</small>}</div></div>;})}</div></section>
+          {trainerLetters && <section className="contentCard"><CardTitle number={bengaliNumber("2b",locale)} title={pick(locale,{bn:"হরফ ও ধ্বনি অনুশীলন",en:"Letters & sounds trainer"})} icon={<Volume2/>}/><p className="grammarNote">{pick(locale,{bn:"প্রতিটি অক্ষরে চাপ দিয়ে ধ্বনি শুনুন, চারটি রূপ দেখুন, তারপর ‘কোনটি শুনলেন’ অনুশীলন করুন।",en:"Tap each letter to hear its sound, see its four forms, then try the ‘which did you hear?’ drill."})}</p><AlphabetTrainer subset={trainerLetters} locale={locale}/></section>}
+          <section className="contentCard"><CardTitle number={bengaliNumber("03",locale)} title={pick(locale,{bn:"বাক্যের ধরন লক্ষ্য করুন",en:"Notice the pattern"})} icon={<BookOpen/>}/><p className="grammarNote">{locale === "bn" ? lesson.grammarBn : lesson.grammar}</p><div className="modelStack">{lesson.models.map((model,index)=><div key={model}><span>{bengaliNumber(index+1,locale)}</span><div className="modelText"><p dir="rtl">{model}</p>{showTranslit && <i className="translit">{simpleTranslit(model)}</i>}</div><button onClick={()=>speak(model)} aria-label={pick(locale,{bn:"নমুনাটি শুনুন",en:"Read model aloud"})}><Volume2 size={16}/></button></div>)}</div><p className="practiceHint"><CircleHelp size={15}/> {pick(locale,{bn:"প্রতিটি নমুনা ধীরে ও স্বাভাবিকভাবে পড়ুন, তারপর স্মৃতি থেকে একবার বলুন।",en:"Read each model slowly, naturally, then once from memory."})}</p></section>
           {passage && <section className="contentCard passageCard">
             <CardTitle number={bengaliNumber("04",locale)} title={passage.kind === "listening" ? pick(locale,{bn:"শুনে বোঝার লেখা",en:"Listening text"}) : pick(locale,{bn:"পড়ার লেখা",en:"Reading text"})} icon={passage.kind === "listening" ? <Headphones/> : <BookOpen/>}/>
             <div className="passageHead">
@@ -456,13 +473,15 @@ export default function ArabicCoach({ user, isDemo = false, locale, onLocaleChan
     );
   }
 
-  function speak(text: string) {
-    if (!("speechSynthesis" in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ar-SA";
-    utterance.rate = 0.78;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+  async function speak(text: string, assetSrc?: string) {
+    const result = await playArabic(text, assetSrc);
+    if (result === "unavailable") {
+      toast({
+        variant: "error",
+        title: pick(locale, { bn: "এই ডিভাইসে অডিও পাওয়া যায়নি", en: "Audio unavailable on this device" }),
+        description: pick(locale, { bn: "উচ্চারণের জন্য নিচের রোমান হরফ (উচ্চারণ-সহায়িকা) দেখুন।", en: "Use the transliteration (pronunciation help) shown below to sound it out." }),
+      });
+    }
   }
 }
 
