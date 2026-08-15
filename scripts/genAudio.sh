@@ -42,14 +42,36 @@ i=0; while IFS= read -r w; do
   i=$((i+1))
 done < /tmp/ac_words.txt
 
+echo "Extracting model sentences…"
+node -e '
+const fs=require("fs");
+const raw=fs.readFileSync("src/data/handcraftedLessons.ts","utf8");
+const rows=raw.split("\n").filter(l=>/^\[".*\],?$/.test(l.trim()));
+const set=new Set();
+for(const line of rows){const parts=line.match(/"((?:[^"\\]|\\.)*)"/g); if(!parts||parts.length<6)continue;
+  parts[5].slice(1,-1).split("|").forEach(m=>{const s=m.trim(); if(s&&/[\u0600-\u06FF]/.test(s))set.add(s);});}
+fs.writeFileSync("/tmp/ac_sents.txt",[...set].join("\n"));
+'
+
+echo "Generating sentence audio…"
+mkdir -p public/audio/sentences
+i=0; while IFS= read -r s; do
+  [ -z "$s" ] && continue
+  say -v "$VOICE" -r "${SENT_RATE:-100}" "$s" -o /tmp/ac.aiff
+  afconvert /tmp/ac.aiff "public/audio/sentences/$i.m4a" -f m4af -d aac
+  i=$((i+1))
+done < /tmp/ac_sents.txt
+
 echo "Writing manifest…"
 node -e '
 const fs=require("fs");
 const letters=fs.readFileSync("/tmp/ac_letters.txt","utf8").split("\n").filter(Boolean);
 const words=fs.readFileSync("/tmp/ac_words.txt","utf8").split("\n").filter(Boolean);
+const sents=fs.readFileSync("/tmp/ac_sents.txt","utf8").split("\n").filter(Boolean);
 const map={};
 letters.forEach((ar,i)=>{ map[ar]="/audio/letters/"+i+".m4a"; });
 words.forEach((ar,i)=>{ if(!map[ar]) map[ar]="/audio/words/"+i+".m4a"; });
+sents.forEach((ar,i)=>{ if(!map[ar]) map[ar]="/audio/sentences/"+i+".m4a"; });
 const entries=Object.entries(map).map(([k,v])=>`  ${JSON.stringify(k)}: ${JSON.stringify(v)},`).join("\n");
 fs.writeFileSync("src/data/audioManifest.ts",
 `// AUTO-GENERATED audio manifest (PRD F1, layer 1). Run scripts/genAudio.sh.\n\nconst manifest: Record<string, string> = {\n${entries}\n};\n\nexport function getAudioAsset(text: string): string | undefined {\n  const t = text.trim();\n  if (manifest[t]) return manifest[t];\n  if (t.startsWith("\u0627\u0644") && manifest[t.slice(2)]) return manifest[t.slice(2)];\n  return undefined;\n}\n\nexport const audioAssetCount = Object.keys(manifest).length;\n`);
