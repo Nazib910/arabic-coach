@@ -62,16 +62,35 @@ i=0; while IFS= read -r s; do
   i=$((i+1))
 done < /tmp/ac_sents.txt
 
+echo "Extracting passage lines…"
+node -e '
+const fs=require("fs");
+const P=fs.readFileSync("src/data/passages.ts","utf8");
+const set=new Set([...P.matchAll(/ar:\s*"((?:[^"\\]|\\.)*)"/g)].map(m=>m[1]).filter(s=>/[\u0600-\u06FF]/.test(s)));
+fs.writeFileSync("/tmp/ac_pass.txt",[...set].join("\n"));
+'
+
+echo "Generating passage audio…"
+mkdir -p public/audio/passages
+i=0; while IFS= read -r s; do
+  [ -z "$s" ] && continue
+  say -v "$VOICE" -r "${SENT_RATE:-100}" "$s" -o /tmp/ac.aiff
+  afconvert /tmp/ac.aiff "public/audio/passages/$i.m4a" -f m4af -d aac
+  i=$((i+1))
+done < /tmp/ac_pass.txt
+
 echo "Writing manifest…"
 node -e '
 const fs=require("fs");
 const letters=fs.readFileSync("/tmp/ac_letters.txt","utf8").split("\n").filter(Boolean);
 const words=fs.readFileSync("/tmp/ac_words.txt","utf8").split("\n").filter(Boolean);
 const sents=fs.readFileSync("/tmp/ac_sents.txt","utf8").split("\n").filter(Boolean);
+const passages=fs.readFileSync("/tmp/ac_pass.txt","utf8").split("\n").filter(Boolean);
 const map={};
 letters.forEach((ar,i)=>{ map[ar]="/audio/letters/"+i+".m4a"; });
 words.forEach((ar,i)=>{ if(!map[ar]) map[ar]="/audio/words/"+i+".m4a"; });
 sents.forEach((ar,i)=>{ if(!map[ar]) map[ar]="/audio/sentences/"+i+".m4a"; });
+passages.forEach((ar,i)=>{ if(!map[ar]) map[ar]="/audio/passages/"+i+".m4a"; });
 const entries=Object.entries(map).map(([k,v])=>`  ${JSON.stringify(k)}: ${JSON.stringify(v)},`).join("\n");
 fs.writeFileSync("src/data/audioManifest.ts",
 `// AUTO-GENERATED audio manifest (PRD F1, layer 1). Run scripts/genAudio.sh.\n\nconst manifest: Record<string, string> = {\n${entries}\n};\n\nexport function getAudioAsset(text: string): string | undefined {\n  const t = text.trim();\n  if (manifest[t]) return manifest[t];\n  if (t.startsWith("\u0627\u0644") && manifest[t.slice(2)]) return manifest[t.slice(2)];\n  return undefined;\n}\n\nexport const audioAssetCount = Object.keys(manifest).length;\n`);
