@@ -8,6 +8,8 @@
 //   4. Otherwise: report "unavailable" so the UI can show the transliteration
 //      instead of failing silently.
 
+import { getAudioAsset } from "@/data/audioManifest";
+
 export type AudioResult = "asset" | "tts" | "browser" | "unavailable";
 
 let cachedArabicVoice: SpeechSynthesisVoice | null | undefined;
@@ -64,6 +66,8 @@ function stopAll() {
 
 function playAsset(src: string): Promise<boolean> {
   return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok: boolean) => { if (!settled) { settled = true; resolve(ok); } };
     let audio = assetCache.get(src);
     if (!audio) {
       audio = new Audio(src);
@@ -71,11 +75,9 @@ function playAsset(src: string): Promise<boolean> {
     }
     currentAudio = audio;
     audio.currentTime = 0;
-    audio.onended = () => resolve(true);
-    audio.onerror = () => resolve(false);
-    audio.play().then(() => {/* started */}).catch(() => resolve(false));
-    // Resolve optimistically once playback starts; onerror above handles failures.
-    setTimeout(() => resolve(true), 60);
+    audio.onerror = () => done(false);
+    // Consider it a success once playback actually starts.
+    audio.play().then(() => done(true)).catch(() => done(false));
   });
 }
 
@@ -138,8 +140,10 @@ export async function playArabic(
   const isTiny = trimmed.replace(/[\u064B-\u0652\s]/g, "").length <= 3;
   const slow = opts?.slow ?? isTiny;
 
-  if (assetSrc) {
-    const ok = await playAsset(assetSrc);
+  // Prefer a pre-recorded asset (explicit, or resolved from the manifest).
+  const resolvedAsset = assetSrc ?? getAudioAsset(trimmed);
+  if (resolvedAsset) {
+    const ok = await playAsset(resolvedAsset);
     if (ok) return "asset";
   }
   const ttsOk = await playTts(trimmed, slow);
