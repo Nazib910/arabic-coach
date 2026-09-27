@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Text-to-speech proxy for Arabic (PRD F1, layer 2).
 // Tries an OpenAI-compatible /audio/speech endpoint on the configured base.
@@ -21,8 +22,8 @@ function clampSpeed(n: number): number {
 }
 
 export async function GET(req: NextRequest) {
-  const text = req.nextUrl.searchParams.get("text")?.slice(0, 600).trim();
-  if (!text) return new Response("Missing text", { status: 400 });
+  const text = req.nextUrl.searchParams.get("text")?.trim();
+  if (!text || text.length > 600) return new Response("Text must be 1–600 characters", { status: 400 });
   const slow = req.nextUrl.searchParams.get("slow") === "1";
   const speed = slow ? TTS_SLOW_SPEED : TTS_SPEED;
 
@@ -32,7 +33,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const upstream = await fetch(`${BASE.replace(/\/$/, "")}/audio/speech`, {
+    const supabase = await getSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return new Response("Sign in for server audio", { status: 401 });
+    if (data.user.user_metadata?.is_demo || (process.env.DEMO_EMAIL && data.user.email === process.env.DEMO_EMAIL)) return new Response("Demo uses bundled or device audio", { status: 403 });
+
+    const { quotaResponse } = await import("@/lib/server/rateLimiter");
+    const limited = await quotaResponse(supabase, "tts");
+    if (limited) return limited;
+
+    const upstream = await fetch(`${BASE.replace(/\/$/, "").replace(/\/chat\/completions$/, "")}/audio/speech`, {
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(8000)]),
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -50,10 +61,11 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "audio/mpeg",
         // Cache identical phrases aggressively — the same letter/word is replayed a lot.
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "private, max-age=86400",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[TTS] Request failed:", error instanceof Error ? error.message : "UnknownError");
     return new Response("TTS request failed", { status: 502 });
   }
 }

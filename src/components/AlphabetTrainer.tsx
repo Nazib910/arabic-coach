@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getDrillPairs } from "@/lib/alphabetDrill";
 import { Volume2, Check, X } from "lucide-react";
-import { letters, confusablePairs, type LetterInfo } from "@/data/letters";
+import { letters, type LetterInfo } from "@/data/letters";
 import { playArabic } from "@/lib/audio";
 import type { Locale } from "@/lib/i18n";
 import { pick } from "@/lib/i18n";
@@ -18,6 +19,18 @@ export default function AlphabetTrainer({ subset, locale }: { subset?: string[];
     [subset],
   );
   const [active, setActive] = useState<LetterInfo>(shown[0] ?? letters[0]);
+  const [audioError, setAudioError] = useState(false);
+  async function hearLetter(ch: string) {
+    setAudioError(false);
+    const source = await playArabic(ch);
+    setAudioError(source === "unavailable");
+  }
+
+  // Reset active letter when subset changes (if it's no longer in shown)
+  const shownChars = useMemo(() => shown.map(l => l.ar), [shown]);
+  if (!shownChars.includes(active.ar) && shown.length > 0) {
+    setActive(shown[0]);
+  }
 
   return (
     <div className="alphabetTrainer">
@@ -26,7 +39,9 @@ export default function AlphabetTrainer({ subset, locale }: { subset?: string[];
           <button
             key={letter.ar}
             className={`letterTile ${active.ar === letter.ar ? "active" : ""} ${letter.group}`}
-            onClick={() => { setActive(letter); void playArabic(letter.ar); }}
+            onClick={() => { setActive(letter); void hearLetter(letter.ar); }}
+            aria-label={pick(locale,{bn:`${letter.nameBn} অক্ষরটি শুনুন`,en:`Hear letter ${letter.name}`})}
+            aria-pressed={active.ar === letter.ar}
             title={letter.name}
           >
             <b dir="rtl">{letter.ar}</b>
@@ -41,7 +56,7 @@ export default function AlphabetTrainer({ subset, locale }: { subset?: string[];
           <div>
             <b>{locale === "bn" ? active.nameBn : active.name} <i className="translit">/{active.translit}/</i></b>
             <p>{locale === "bn" ? active.tipBn : active.tipEn}</p>
-            <button className="hearBtn" onClick={() => void playArabic(active.ar)}><Volume2 size={15}/> {pick(locale, { bn: "শব্দটি শুনুন", en: "Hear the sound" })}</button>
+            <button className="hearBtn" onClick={() => void hearLetter(active.ar)}><Volume2 size={15}/> {pick(locale, { bn: "শব্দটি শুনুন", en: "Hear the sound" })}</button>
           </div>
         </div>
         <div className="letterForms">
@@ -57,32 +72,53 @@ export default function AlphabetTrainer({ subset, locale }: { subset?: string[];
         </div>
       </div>
 
-      <SoundDrill subset={shown.map((l) => l.ar)} locale={locale} />
+      {audioError && <p role="status">{pick(locale,{bn:"অডিও পাওয়া যায়নি। পরে আবার চেষ্টা করুন; উচ্চারণ-সহায়িকা আনুমানিক।",en:"Audio unavailable. Try again later; transliteration is only approximate."})}</p>}
+      <SoundDrill key={shownChars.join("")} subset={shownChars} locale={locale} />
     </div>
   );
 }
 
 // "Which did you hear?" — plays a letter, learner picks between two confusable
 // options. No penalty; pure ear-training.
+// Only shows if there are valid confusable pairs within the taught subset.
 function SoundDrill({ subset, locale }: { subset: string[]; locale: Locale }) {
-  const pairs = useMemo(
-    () => confusablePairs.filter(([a, b]) => subset.includes(a) || subset.includes(b)),
-    [subset],
-  );
+  const fallbackPairs = useMemo(() => getDrillPairs(subset), [subset]);
+  const [heard, setHeard] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+
   const [round, setRound] = useState(0);
   const [result, setResult] = useState<"right" | "wrong" | null>(null);
+  const [answerIndex, setAnswerIndex] = useState(0);
 
-  const usablePairs = pairs.length ? pairs : confusablePairs;
-  const pair = usablePairs[round % usablePairs.length];
-  // The correct answer is randomly one of the pair, stable per round.
-  const answerIndex = useMemo(() => Math.floor(Math.random() * 2), [round]);
+  // If no pairs available, don't show drill
+  if (fallbackPairs.length === 0) {
+    return null;
+  }
+
+  const pair = fallbackPairs[round % fallbackPairs.length];
   const answer = pair[answerIndex];
 
   function choose(choice: string) {
-    setResult(choice === answer ? "right" : "wrong");
+    if (heard && !result) setResult(choice === answer ? "right" : "wrong");
   }
+
+  async function hear() {
+    setPlaying(true);
+    setHeard(false);
+    setAudioError(false);
+    const index = heard ? answerIndex : Math.floor(Math.random() * 2);
+    setAnswerIndex(index);
+    const source = await playArabic(pair[index]);
+    setHeard(source !== "unavailable" && source !== "cancelled");
+    setAudioError(source === "unavailable");
+    setPlaying(false);
+  }
+
   function next() {
     setResult(null);
+    setHeard(false);
+    setAudioError(false);
     setRound((r) => r + 1);
   }
 
@@ -90,14 +126,20 @@ function SoundDrill({ subset, locale }: { subset: string[]; locale: Locale }) {
     <div className="soundDrill">
       <div className="soundDrillHead">
         <b>{pick(locale, { bn: "কোনটি শুনলেন?", en: "Which did you hear?" })}</b>
-        <button className="hearBtn" onClick={() => void playArabic(answer)}><Volume2 size={15}/> {pick(locale, { bn: "আবার শুনুন", en: "Play sound" })}</button>
+        <button
+          className="hearBtn"
+          onClick={hear}
+          disabled={Boolean(result) || playing}
+        >
+          <Volume2 size={15}/> {pick(locale, { bn: "আবার শুনুন", en: "Play sound" })}
+        </button>
       </div>
       <div className="soundDrillOptions">
         {pair.map((ch) => (
           <button
             key={ch}
             className={`drillOption ${result && ch === answer ? "correct" : ""} ${result === "wrong" && ch !== answer ? "" : ""}`}
-            disabled={Boolean(result)}
+            disabled={Boolean(result) || !heard || playing}
             onClick={() => choose(ch)}
             dir="rtl"
           >
@@ -105,8 +147,9 @@ function SoundDrill({ subset, locale }: { subset: string[]; locale: Locale }) {
           </button>
         ))}
       </div>
+      {audioError && <p role="status">{pick(locale,{bn:"অডিও পাওয়া যায়নি। আবার চেষ্টা করুন; না শুনে উত্তর দিতে হবে না।",en:"Audio unavailable. Retry when ready; no answer is required without sound."})}</p>}
       {result && (
-        <div className={`drillResult ${result}`}>
+        <div role="status" className={`drillResult ${result}`}>
           {result === "right" ? <><Check size={15}/> {pick(locale, { bn: "ঠিক আছে!", en: "Correct!" })}</> : <><X size={15}/> {pick(locale, { bn: `এটি ছিল ${answer}`, en: `It was ${answer}` })}</>}
           <button onClick={next}>{pick(locale, { bn: "পরেরটি", en: "Next" })}</button>
         </div>

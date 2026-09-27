@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:sequence": "npx tsx scripts/checkSequence.ts"
+    "check:sequence": "tsx scripts/checkSequence.ts",
+    "audit:curriculum": "tsx scripts/auditCurriculum.ts",
+    "test": "tsx --test src/lib/*.test.ts src/lib/server/*.test.ts src/data/*.test.ts",
+    "test:e2e": "playwright test",
+    "check": "pnpm test && pnpm check:sequence && tsc --noEmit && pnpm lint"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -20,11 +24,13 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   },
   "packageManager": "pnpm@11.20.0"

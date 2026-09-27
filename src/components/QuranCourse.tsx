@@ -1,0 +1,15 @@
+"use client";
+import { useState } from "react";
+import { quranCourseContent } from "@/data/quranCourse";
+import { pick, type Locale } from "@/lib/i18n";
+export default function QuranCourse({ locale }: { userId: string; locale: Locale }) {
+  const [index,setIndex]=useState(0), [answer,setAnswer]=useState<number|null>(null), [checked,setChecked]=useState(false);
+  const lesson=quranCourseContent[index];
+  function select(index:number){setIndex(index);setAnswer(null);setChecked(false);}
+  return <div className="lessonPage"><h1>{pick(locale,{bn:"কুরআনের ভাষা: পরিচিতি",en:"Quran language: introduction"})}</h1>
+    <p className="grammarNote">{pick(locale,{bn:"আগে shared foundation-এর হরফ, হরকত ও সহজ বাক্য অনুশীলন করুন। নিচে সাধারণ আরবি বানানে নির্বাচিত আয়াত, শেখার জন্য নিজস্ব অর্থ-সহায়তা ও grammar আছে। এটি তাফসির, তাজবিদ বা দক্ষতার সনদ নয়। এখানে AI তিলাওয়াত নেই; উৎসের লিংকে প্রামাণ্য পাঠ ও তিলাওয়াত মিলিয়ে নিন। ফল শুধু এই session-এর self-check।",en:"First practise letters, vowel marks and simple sentences in the shared foundation. These selected verses use conventional Arabic orthography with authored study glosses and grammar. This is not tafsir, tajwid or certification. No AI recitation is used; consult the source links for the text and recitation. Results are session-only self-checks."})}</p>
+    <nav className="practiceActions" aria-label={pick(locale,{bn:"কুরআনের ভাষার পাঠ",en:"Quran language lessons"})}>{quranCourseContent.map((item,i)=><button key={item.id} aria-current={i===index?"step":undefined} onClick={()=>select(i)}>{i+1}. {pick(locale,item.title)}</button>)}</nav>
+    <section className="contentCard"><h2>{pick(locale,lesson.title)}</h2><p className="quranVerse" lang="ar" dir="rtl">{lesson.ar}</p><a href={`https://quran.com/${lesson.reference.replace(":","/")}`} target="_blank" rel="noopener noreferrer">Quran {lesson.reference} ↗</a><p>{pick(locale,lesson.meaning)}</p><p className="grammarNote">{pick(locale,lesson.teaching)}</p></section>
+    <section className="contentCard"><h2>{pick(locale,{bn:"অর্থ বুঝে বেছে নিন",en:"Check your understanding"})}</h2><fieldset><legend>{pick(locale,lesson.question)}</legend>{lesson.options.map((option,i)=><label className="choiceRow" key={i}><input type="radio" name={`quran-${lesson.id}`} checked={answer===i} disabled={checked} onChange={()=>setAnswer(i)}/><span lang="ar" dir="rtl">{option.ar}</span> — {pick(locale,option)}</label>)}</fieldset><div className="practiceActions"><button onClick={()=>setChecked(true)} disabled={answer===null||checked}>{pick(locale,{bn:"উত্তর দেখুন",en:"Check answer"})}</button><button onClick={()=>select(index)}>{pick(locale,{bn:"আবার চেষ্টা",en:"Try again"})}</button></div>{checked&&<p role="status">{pick(locale,{bn:answer===lesson.correct?"ঠিক হয়েছে। ব্যাখ্যার সঙ্গে মিলিয়ে বলুন কেন এটি ঠিক।":"এবার হয়নি। সঠিক উত্তর: ",en:answer===lesson.correct?"Correct. Explain why using the teaching note.":"Not yet. Correct answer: "})}{answer!==lesson.correct&&pick(locale,lesson.options[lesson.correct])}</p>}</section>
+  </div>;
+}

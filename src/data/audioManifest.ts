@@ -364,7 +364,6 @@ const manifest: Record<string, string> = {
   "جهّزْ دورَك وردودَك.": "/audio/sentences/235.m4a",
   "تدرّبْ على الختامِ المهذّبِ.": "/audio/sentences/236.m4a",
   "مثّلْ موقفاً عملياً كاملاً.": "/audio/sentences/237.m4a",
-  "اتبعْ تعليماتٍ متعددةَ الخطواتِ.": "/audio/sentences/238.m4a",
   "أَسْتَيْقِظُ كُلَّ صَباحٍ في السّاعةِ السّادسةِ.": "/audio/passages/0.m4a",
   "أَتَناوَلُ الفَطورَ ثُمَّ أَشْرَبُ الشّايَ.": "/audio/passages/1.m4a",
   "أَذْهَبُ إلى الجامعةِ بالحافلةِ.": "/audio/passages/2.m4a",

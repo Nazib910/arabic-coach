@@ -3,6 +3,9 @@ import { getLessonTranslation } from "@/data/lessonTranslations";
 import { getLessonBrief } from "@/data/lessonBriefs";
 import { handcraftedRaw } from "@/data/handcraftedLessons";
 import { phaseContent } from "@/data/phaseContent";
+import { improveFoundation } from "@/data/foundation";
+import { guidedExercises } from "@/data/guidedExercises";
+import { topicTranslations } from "@/data/topicTranslations";
 import {
   COURSE_LENGTH,
   phaseForDay,
@@ -22,7 +25,7 @@ const handcrafted: Lesson[] = handcraftedRaw.map((item, index) => {
     phase: item[2],
     duration: "45–60 min",
     focus: item[3],
-    vocabulary: item[4].split("،").map((word) => word.trim()),
+    vocabulary: item[4].split(/[،,]/).map((word) => word.trim()).filter(Boolean),
     models: item[5].split("|"),
     grammar: item[3],
     goals: [item[6], "Use today’s vocabulary in original Arabic.", "Log errors and confidence before finishing."],
@@ -79,10 +82,10 @@ function generatedLesson(day: number): Lesson {
       ? `ধাপ ${phase.index}: পারদর্শিতা যাচাই`
       : checkpoint
         ? `যাচাই · ${phase.titleBn}`
-        : topic;
+        : topicTranslations[topic];
 
   const focus = checkpoint ? `Integrated review of ${phase.title.toLowerCase()}` : `${topic} — ${phase.summary}`;
-  const focusBn = checkpoint ? `${phase.titleBn} — সমন্বিত পুনরালোচনা` : `${topic} · ${phase.summaryBn}`;
+  const focusBn = checkpoint ? `${phase.titleBn} — সমন্বিত পুনরালোচনা` : `${topicTranslations[topic]} · ${phase.summaryBn}`;
 
   const goals = checkpoint
     ? [`Demonstrate retained control of ${phase.title.toLowerCase()} without notes.`, phase.exit, "Log errors and confidence before finishing."]
@@ -145,7 +148,7 @@ const generated: Lesson[] = Array.from(
   (_, i) => generatedLesson(handcrafted.length + i + 1),
 );
 
-export const lessons: Lesson[] = [...handcrafted, ...generated];
+export const lessons: Lesson[] = [...handcrafted, ...generated].map(improveFoundation).map(guidedExercises);
 
 // Legacy export kept for any existing imports.
 export const phases = [

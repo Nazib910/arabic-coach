@@ -1,4 +1,8 @@
 custom-llm.md
 supabase-credentials.txt
 .env*
-!.env.example
+tmp_rovodev_*
+tests/
+playwright.config.ts
+**/*.test.ts
+*.tsbuildinfo

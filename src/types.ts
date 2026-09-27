@@ -50,6 +50,9 @@ export type FeedbackCopy = {
 };
 
 export type TutorFeedback = {
+  /** Only live, validated feedback may advance a learner. */
+  source?: "ai" | "demo";
+  assessedSkill?: Skill;
   score: number;
   headline: string;
   strengths: string[];
